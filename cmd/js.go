@@ -76,7 +76,8 @@ var (
 
 	jsOutputCommand = &cobra.Command{
 		Use:   "output",
-		Short: "Parses STDIN as Manifest, returning mashed files to STDOUT",
+		Short: "Parses STDIN as manifest, returning mashed files to STDOUT",
+		Example: "fe-tool js --src javascript-location/ < javascript-location/prod.manifest > main.js",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buf := new(bytes.Buffer)
 			io.Copy(buf, os.Stdin)
@@ -93,7 +94,8 @@ var (
 
 	jsServerCommand = &cobra.Command{
 		Use:   "server",
-		Short: "Host Manifest server.",
+		Short: "Host a HTTP server, returning mashed JavaScript files on request",
+		Example: "fe-tool js --src javascript-location/ --root javascript-location/ --port 9000",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mime.AddExtensionType(".js", "text/javascript")
 
@@ -124,6 +126,6 @@ func init() {
 	jsServerCommand.Flags().Int64Var(&port, "port", 8000, "Port to listen for HTTP server")
 	jsServerCommand.Flags().StringVar(&root, "root", ".", "Host manifest files from this directory")
 
-	jsCommand.PersistentFlags().StringVar(&src, "src", "./src", "Location of JavaScript files")
+	jsCommand.PersistentFlags().StringVar(&src, "src", "./src", "Location of referenced JavaScript files")
 	RootCmd.AddCommand(jsCommand)
 }

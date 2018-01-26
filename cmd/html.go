@@ -90,12 +90,14 @@ func htmlHandler(w http.ResponseWriter, req *http.Request) {
 var (
 	htmlCommand = &cobra.Command{
 		Use: "html",
-		Short: "Build HTML files from templates and environment variables.",
+		Short: "Build HTML files from templates and environment variables",
+		Long: `This command produces static HTML files from Go template files, replacing references to environment variables with their values.`,
 	}
 
 	htmlServerCommand = &cobra.Command{
 		Use:   "server",
-		Short: "Host HTTP server for returning processed templates on request.",
+		Short: "Host a HTTP server for returning processed templates on request",
+		Example: "fe-tool html server --port 9000 --prefix WEBSITE --root template-location/",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, setting := range os.Environ() {
 				pair := strings.SplitN(setting, "=", 2)
@@ -128,7 +130,8 @@ var (
 
 	htmlOutputCommand = &cobra.Command{
 		Use:   "output",
-		Short: "Parses STDIN as template against env variables.",
+		Short: "Parses STDIN as template against environment variables, outputing processed template to STDOUT",
+		Example: "fe-tool html output --prefix WEBSITE < template-location/index.template > deploy/index.html",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, setting := range os.Environ() {
 				pair := strings.SplitN(setting, "=", 2)
@@ -159,12 +162,12 @@ var (
 )
 
 func init() {
-	htmlServerCommand.Flags().Int64Var(&port, "port", 8000, "Port to listen for HTTP server")
-	htmlServerCommand.Flags().StringVar(&root, "root", ".", "Host files from this directory")
+	htmlServerCommand.Flags().Int64Var(&port, "port", 8000, `Port to listen for HTTP server`)
+	htmlServerCommand.Flags().StringVar(&root, "root", ".", `Host template files from this directory`)
 
 	htmlCommand.AddCommand(htmlServerCommand)
 	htmlCommand.AddCommand(htmlOutputCommand)
-	htmlCommand.PersistentFlags().StringVar(&prefix, "prefix", "", "Prefix of interested environment variables")
+	htmlCommand.PersistentFlags().StringVar(&prefix, "prefix", "", `Only environment variables with this prefix will be available to templates`)
 
 	RootCmd.AddCommand(htmlCommand)
 }

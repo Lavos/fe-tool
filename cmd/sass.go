@@ -95,7 +95,8 @@ var (
 
 	sassServerCommand = &cobra.Command{
 		Use:   "server",
-		Short: "Host HTTP server returning processed and mashed files on request",
+		Short: "Host a HTTP server returning processed and mashed files on request",
+		Example: "fe-tool sass server --port 9000 --src sass-location/",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mime.AddExtensionType(".css", "text/css")
 
@@ -120,7 +121,8 @@ var (
 
 	sassOutputCommand = &cobra.Command{
 		Use:   "output",
-		Short: "Parses STDIN as Manifest, returning proceessed and mashed files to STDOUT",
+		Short: "Parses STDIN as manifest, returning proceessed and mashed files to STDOUT",
+		Example: "fe-tool sass output --src sass-location/ < sass-location/style.manifest > main.css",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buf := new(bytes.Buffer)
 			io.Copy(buf, os.Stdin)
@@ -140,7 +142,7 @@ func init() {
 	sassServerCommand.Flags().Int64Var(&port, "port", 8000, "Port to listen for HTTP server")
 	sassServerCommand.Flags().StringVar(&root, "root", ".", "Host manifest files from this directory")
 
-	sassCommand.PersistentFlags().StringVar(&src, "src", "./src", "Location of SASS files")
+	sassCommand.PersistentFlags().StringVar(&src, "src", "./src", "Location of referenced SASS files")
 	sassCommand.AddCommand(sassServerCommand)
 	sassCommand.AddCommand(sassOutputCommand)
 
