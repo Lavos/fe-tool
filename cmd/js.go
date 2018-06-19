@@ -38,7 +38,15 @@ func jsHandler(w http.ResponseWriter, req *http.Request) {
 		upath = "/" + upath
 	}
 
-	upath = path.Clean(root + upath + ".manifest")
+	parts := strings.Split(upath, ".")
+
+	if len(parts) == 0 {
+		l.Printf("No manifest file found for: %s", upath)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	upath = path.Clean(root + parts[0] + ".manifest")
 
 	// attempt to open manifest file
 	manifest_file, err := os.Open(upath)

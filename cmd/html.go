@@ -56,15 +56,16 @@ func CompileFile(template_name string, data interface{}, w io.Writer) error {
 	t.Delims("<%", "%>")
 	t.Funcs(fm)
 
-	_, err := t.ParseFiles(fmt.Sprintf("%s%s.template", root, template_name))
+	template_path := fmt.Sprintf("%s%s.template", root, template_name)
+	_, err := t.ParseFiles(template_path)
 
 	if err != nil {
 		return err
 	}
 
-	template_ref := strings.TrimPrefix(fmt.Sprintf("%s.template", template_name), "/")
+	_, filename := path.Split(template_name)
 
-	return t.ExecuteTemplate(w, template_ref, data)
+	return t.ExecuteTemplate(w, fmt.Sprintf("%s.template", filename), data)
 }
 
 func htmlHandler(w http.ResponseWriter, req *http.Request) {
@@ -76,8 +77,8 @@ func htmlHandler(w http.ResponseWriter, req *http.Request) {
 		upath = "/" + upath
 	}
 
-	if upath == "/" {
-		upath = "/index.html"
+	if strings.HasSuffix(upath, "/") {
+		upath = upath + "index.html"
 	}
 
 	err := CompileFile(path.Clean(upath), env, w)
