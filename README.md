@@ -33,6 +33,7 @@ Available Commands:
   html        Build HTML files from templates and environment variables
   js          Mash JavaScript files
   sass        Process SASS files to output mashed CSS
+  single      Reads a configuration manifest via STDIN, hosting many types of servers at once, configured via routes.
 
 Flags:
   -h, --help   help for fe-tool
