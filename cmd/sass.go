@@ -15,7 +15,7 @@ import (
 	libsass "github.com/wellington/go-libsass"
 )
 
-func compileManifest(m *Manifest, w io.Writer) error {
+func compileManifest(m *Manifest, source_location string, w io.Writer) error {
 	files := make([]*os.File, len(m.Files))
 	readers := make([]io.Reader, len(m.Files))
 
@@ -26,7 +26,7 @@ func compileManifest(m *Manifest, w io.Writer) error {
 	}()
 
 	for i, name := range m.Files {
-		file, err := os.Open(src + "/" + name)
+		file, err := os.Open(source_location + "/" + name)
 
 		if err != nil {
 			return err
@@ -86,7 +86,7 @@ func sassHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = compileManifest(m, w)
+	err = compileManifest(m, src, w)
 
 	if err != nil {
 		l.Printf("Mash Error: %s", err)
@@ -141,7 +141,7 @@ var (
 				return err
 			}
 
-			return compileManifest(m, os.Stdout)
+			return compileManifest(m, src, os.Stdout)
 		},
 	}
 )

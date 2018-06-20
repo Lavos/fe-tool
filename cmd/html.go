@@ -51,19 +51,18 @@ func InjectFragments(pattern string) (template.HTML, error) {
 	return template.HTML(buf.String()), nil
 }
 
-func CompileFile(template_name string, data interface{}, w io.Writer) error {
+func CompileFile(template_path string, data interface{}, w io.Writer) error {
 	t := template.New("base")
 	t.Delims("<%", "%>")
 	t.Funcs(fm)
 
-	template_path := fmt.Sprintf("%s%s.template", root, template_name)
 	_, err := t.ParseFiles(template_path)
 
 	if err != nil {
 		return err
 	}
 
-	_, filename := path.Split(template_name)
+	_, filename := path.Split(template_path)
 
 	return t.ExecuteTemplate(w, fmt.Sprintf("%s.template", filename), data)
 }
@@ -81,7 +80,8 @@ func htmlHandler(w http.ResponseWriter, req *http.Request) {
 		upath = upath + "index.html"
 	}
 
-	err := CompileFile(path.Clean(upath), env, w)
+	template_path := fmt.Sprintf("%s%s.template", root, path.Clean(upath))
+	err := CompileFile(template_path, env, w)
 
 	if err != nil {
 		l.Printf("Compile Error: %s", err)

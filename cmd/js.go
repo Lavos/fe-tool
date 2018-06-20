@@ -14,9 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func mashManifest(m *Manifest, w io.Writer) error {
+func mashManifest(m *Manifest, src_location string, w io.Writer) error {
 	for _, name := range m.Files {
-		file, err := os.Open(src + "/" + name)
+		file, err := os.Open(src_location + "/" + name)
 
 		if err != nil {
 			return err
@@ -68,7 +68,7 @@ func jsHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = mashManifest(m, w)
+	err = mashManifest(m, src, w)
 
 	if err != nil {
 		l.Printf("Mash Error: %s", err)
@@ -96,7 +96,7 @@ var (
 				return err
 			}
 
-			return mashManifest(m, os.Stdout)
+			return mashManifest(m, src, os.Stdout)
 		},
 	}
 
