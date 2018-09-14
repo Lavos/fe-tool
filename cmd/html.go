@@ -52,6 +52,8 @@ func InjectFragments(pattern string) (template.HTML, error) {
 }
 
 func CompileFile(template_path string, data interface{}, w io.Writer) error {
+	_, filename := path.Split(template_path)
+
 	t := template.New("base")
 	t.Delims("<%", "%>")
 	t.Funcs(fm)
@@ -62,9 +64,7 @@ func CompileFile(template_path string, data interface{}, w io.Writer) error {
 		return err
 	}
 
-	_, filename := path.Split(template_path)
-
-	return t.ExecuteTemplate(w, fmt.Sprintf("%s.template", filename), data)
+	return t.ExecuteTemplate(w, filename, data)
 }
 
 func htmlHandler(w http.ResponseWriter, req *http.Request) {
