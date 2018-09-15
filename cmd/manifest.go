@@ -19,7 +19,6 @@ func ManifestFromBytes(b []byte) (*Manifest, error) {
 	return &m, nil
 }
 
-
 func SingleManifestFromBytes(b []byte) (*SingleManifest, error) {
 	var m SingleManifest
 	err := yaml.Unmarshal(b, &m)
@@ -43,4 +42,28 @@ type Route struct {
 	Template string `yaml:"template"`
 
 	RequestPath string `yaml:"req_path"`
+}
+
+func WatcherManifestFromBytes(b []byte) (*WatcherManifest, error) {
+	var m WatcherManifest
+	err := yaml.Unmarshal(b, &m)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+type WatcherManifest struct {
+	Outputs []WatcherOutput `yaml:"outputs"`
+}
+
+type WatcherOutput struct {
+	FileName string `yaml:"filename"`
+	ManifestFile string `yaml:"manifest"`
+	ManifestType string `yaml:"type"`
+	Source string `yaml:"source"`
+
+	ParsedManifest *Manifest `yaml:"-"`
 }

@@ -1,0 +1,10 @@
+outputs:
+ - filename: watcher.js
+   manifest: examples/js/example.manifest
+   source: examples/js/src
+   type: "javascript"
+ - filename: watcher.css
+   manifest: examples/sass/example.manifest
+   source: examples/sass/src
+   type: "sass"
+
