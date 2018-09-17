@@ -31,8 +31,6 @@ var (
 				return err
 			}
 
-			fmt.Printf("WatcherManifest: %#v\n", wm)
-
 			// create watcher
 			watcher, err := fsnotify.NewWatcher()
 
@@ -60,6 +58,7 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 	var buf *bytes.Buffer
 	var err error
 	var loc string
+	var o *WatcherOutput
 
 	tree := make(map[string]*WatcherOutput)
 
@@ -77,23 +76,31 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 		m, err := ManifestFromBytes(buf.Bytes())
 
 		fmt.Fprintf(os.Stdout, "Manifest: %#v\n", m)
-		output.ParsedManifest = m
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			os.Exit(1)
 		}
 
+		o = &WatcherOutput{
+			FileName: output.FileName,
+			ManifestType: output.ManifestType,
+			ManifestFile: output.ManifestFile,
+			Source: output.Source,
+			ParsedManifest: m,
+		}
+
 		for _, filename := range m.Files {
 			loc = filepath.ToSlash(fmt.Sprintf("%s/%s", output.Source, filename))
 
-			tree[loc] = &output
+			tree[loc] = o
 			fmt.Printf("Watching: %s\n", loc)
 			watcher.Add(loc)
 		}
 	}
 
-	var o *WatcherOutput
+	fmt.Printf("Tree: %#v\n", tree)
+
 	var ok bool
 	var event fsnotify.Event
 
@@ -113,6 +120,8 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 			// standardize filenames for map-lookup
 			loc = filepath.ToSlash(event.Name)
 			loc = strings.Join(filepath.SplitList(loc), "/")
+
+			fmt.Printf("LOC: %s\n", loc)
 
 			// lookup output from child
 			o, ok = tree[loc]
