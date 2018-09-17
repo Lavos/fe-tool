@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"fmt"
+	"strings"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -111,6 +112,7 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 
 			// standardize filenames for map-lookup
 			loc = filepath.ToSlash(event.Name)
+			loc = strings.Join(filepath.SplitList(loc), "/")
 
 			// lookup output from child
 			o, ok = tree[loc]
