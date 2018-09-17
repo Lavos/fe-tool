@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/fsnotify/fsnotify"
@@ -83,7 +84,7 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 		}
 
 		for _, filename := range m.Files {
-			loc = fmt.Sprintf("%s/%s", output.Source, filename)
+			loc = filepath.ToSlash(fmt.Sprintf("%s/%s", output.Source, filename))
 
 			tree[loc] = &output
 			fmt.Printf("Watching: %s\n", loc)
@@ -108,11 +109,14 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 				continue
 			}
 
+			// standardize filenames for map-lookup
+			loc = filepath.ToSlash(event.Name)
+
 			// lookup output from child
-			o, ok = tree[event.Name]
+			o, ok = tree[loc]
 
 			if !ok {
-				fmt.Printf("Not found in tree: %s\n", event.Name)
+				fmt.Printf("Not found in tree: %s\n", loc)
 				continue
 			}
 
