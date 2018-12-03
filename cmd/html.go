@@ -23,7 +23,6 @@ var (
 	}
 
 	prefix string
-	env = make(map[string]string)
 )
 
 func InjectFragments(pattern string) (template.HTML, error) {
@@ -100,14 +99,6 @@ var (
 		Short: "Host a HTTP server for returning processed templates on request",
 		Example: "fe-tool html server --port 9000 --prefix WEBSITE --root template-location/",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			for _, setting := range os.Environ() {
-				pair := strings.SplitN(setting, "=", 2)
-
-				if strings.HasPrefix(pair[0], prefix) {
-					env[pair[0]] = pair[1]
-				}
-			}
-
 			mime.AddExtensionType(".html", "text/html")
 
 			l.Printf("Listening at %d, hosting %s", port, root)

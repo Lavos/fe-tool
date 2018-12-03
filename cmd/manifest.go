@@ -65,5 +65,9 @@ type WatcherOutput struct {
 	ManifestType string `yaml:"type"`
 	Source string `yaml:"source"`
 
+	TemplateFile string `yaml:"template"`
+	Prefix string `yaml:"prefix"`
+	WatchGlobs []string `yaml:"globs"`
+
 	ParsedManifest *Manifest `yaml:"-"`
 }

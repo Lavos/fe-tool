@@ -7,4 +7,9 @@ outputs:
    manifest: examples/sass/example.manifest
    source: examples/sass/src
    type: "sass"
-
+ - filename: watcher.html
+   template: examples/templates/index.html.template
+   prefix: TEST
+   type: "html"
+   globs:
+    - examples/fragments/*.fragment

@@ -17,6 +17,10 @@ const (
 )
 
 var (
+
+)
+
+var (
 	watcherCommand = &cobra.Command{
 		Use:   "watcher",
 		Short: "Reads a configuration manifest via STDIN, producing new output files when a referenced file is changed.",
@@ -60,42 +64,73 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 	var loc string
 	var o *WatcherOutput
 
+	var filenames []string
+
 	tree := make(map[string]*WatcherOutput)
 
 	for _, output := range wm.Outputs {
-		// get manfest file from reference
-		file, err = os.Open(output.ManifestFile)
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			os.Exit(1)
-		}
-
-		buf = new(bytes.Buffer)
-		io.Copy(buf, file)
-		m, err := ManifestFromBytes(buf.Bytes())
-
-		fmt.Fprintf(os.Stdout, "Manifest: %#v\n", m)
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			os.Exit(1)
-		}
-
 		o = &WatcherOutput{
 			FileName: output.FileName,
 			ManifestType: output.ManifestType,
 			ManifestFile: output.ManifestFile,
 			Source: output.Source,
-			ParsedManifest: m,
+			TemplateFile: output.TemplateFile,
+			Prefix: output.Prefix,
+			WatchGlobs: output.WatchGlobs,
 		}
 
-		for _, filename := range m.Files {
-			loc = filepath.ToSlash(fmt.Sprintf("%s/%s", output.Source, filename))
+		switch output.ManifestType {
 
-			tree[loc] = o
-			fmt.Printf("Watching: %s\n", loc)
-			watcher.Add(loc)
+		case TypeJavascript, TypeSASS:
+			// get manifest file from reference
+			file, err = os.Open(output.ManifestFile)
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(1)
+			}
+
+			buf = new(bytes.Buffer)
+			io.Copy(buf, file)
+			m, err := ManifestFromBytes(buf.Bytes())
+
+			fmt.Fprintf(os.Stdout, "Manifest: %#v\n", m)
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(1)
+			}
+
+			o.ParsedManifest = m
+
+			for _, filename := range m.Files {
+				loc = filepath.ToSlash(fmt.Sprintf("%s/%s", output.Source, filename))
+
+				tree[loc] = o
+				fmt.Printf("Watching: %s\n", loc)
+				watcher.Add(loc)
+			}
+
+		case TypeHTML:
+			// watch the template as well
+			watcher.Add(o.TemplateFile)
+			tree[o.TemplateFile] = o
+			fmt.Printf("Watching: %s\n", o.TemplateFile)
+
+			for _, glob := range o.WatchGlobs {
+				filenames, err = filepath.Glob(glob)
+
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s\n", err)
+					os.Exit(1)
+				}
+
+				for _, filename := range filenames {
+					tree[filename] = o
+					fmt.Printf("Watching: %s\n", filename)
+					watcher.Add(filename)
+				}
+			}
 		}
 	}
 
@@ -148,6 +183,9 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 
 			case TypeSASS:
 				err = compileManifest(o.ParsedManifest, o.Source, file)
+
+			case TypeHTML:
+				err = CompileFile(o.TemplateFile, env, file)
 			}
 
 			file.Close()
