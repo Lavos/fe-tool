@@ -132,6 +132,9 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 				}
 			}
 		}
+
+		err = writeOutput(o)
+		fmt.Fprintf(os.Stderr, "Tree Output Error: %s\n", err)
 	}
 
 	fmt.Printf("Tree: %#v\n", tree)
@@ -166,30 +169,7 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 				continue
 			}
 
-			// open file for writing
-			file, err = os.Create(o.FileName)
-
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating file `%s` for writing: %s\n", o.FileName, err)
-				os.Exit(1)
-			}
-
-			fmt.Printf("%#v\n", o)
-			fmt.Printf("%#v\n", o.ParsedManifest)
-
-			switch o.ManifestType {
-			case TypeJavascript:
-				err = mashManifest(o.ParsedManifest, o.Source, file)
-
-			case TypeSASS:
-				err = compileManifest(o.ParsedManifest, o.Source, file)
-
-			case TypeHTML:
-				err = CompileFile(o.TemplateFile, env, file)
-			}
-
-			file.Close()
-
+			err = writeOutput(o)
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 
 		case err, ok = <-watcher.Errors:
@@ -201,6 +181,35 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 			os.Exit(1)
 		}
 	}
+}
+
+func writeOutput(o *WatcherOutput) error {
+	fmt.Printf("test\n")
+	// open file for writing
+	file, err := os.Create(o.FileName)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating file `%s` for writing: %s\n", o.FileName, err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("%#v\n", o)
+	fmt.Printf("%#v\n", o.ParsedManifest)
+
+	switch o.ManifestType {
+	case TypeJavascript:
+		err = mashManifest(o.ParsedManifest, o.Source, file)
+
+	case TypeSASS:
+		err = compileManifest(o.ParsedManifest, o.Source, file)
+
+	case TypeHTML:
+		err = CompileFile(o.TemplateFile, env, file)
+	}
+
+	file.Close()
+
+	return err
 }
 
 func init () {
