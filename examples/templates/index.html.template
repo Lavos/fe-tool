@@ -7,7 +7,7 @@
 
 <body>
 	<div id="master">
-		<h1>Hello <% .TEST_NAME %></h1>
+		<h1>Hello <% .WEBSITE_NAME %></h1>
 	</div><!-- /#master -->
 
 	<div class="fragments">

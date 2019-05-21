@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"strings"
 	"net/http"
-	"html/template"
 	"path"
 
 	"goji.io"
 	"goji.io/pat"
+
+	"github.com/Lavos/fe-tool/lib"
+	qmd "github.com/Lavos/qmd/lib"
 
 	"github.com/spf13/cobra"
 )
@@ -32,7 +34,7 @@ var (
 			buf := new(bytes.Buffer)
 			io.Copy(buf, os.Stdin)
 
-			m, err := SingleManifestFromBytes(buf.Bytes())
+			m, err := lib.SingleManifestFromBytes(buf.Bytes())
 
 			if err != nil {
 				return err
@@ -56,7 +58,7 @@ var (
 					mux.Handle(pat.Get(route.RequestPath), SASSHandler(route.Manifest, route.Source))
 
 				case TypeHTML:
-					mux.Handle(pat.Get(route.RequestPath), HTMLHandler(route.Template, route.Prefix))
+					mux.Handle(pat.Get(route.RequestPath), HTMLHandler(route.Source, route.Template, route.Prefix))
 
 				case TypeStatic:
 					mux.Handle(pat.Get(route.RequestPath), StaticHandler(route.Source))
@@ -89,7 +91,7 @@ func Logger(handler http.Handler) http.Handler {
 	})
 }
 
-func getManifest(manifest_location string) (*Manifest, error) {
+func getManifest(manifest_location string) (*lib.Manifest, error) {
 	// attempt to open manifest file
 	manifest_file, err := os.Open(manifest_location)
 
@@ -100,7 +102,7 @@ func getManifest(manifest_location string) (*Manifest, error) {
 	buf := new(bytes.Buffer)
 	io.Copy(buf, manifest_file)
 
-	m, err := ManifestFromBytes(buf.Bytes())
+	m, err := lib.ManifestFromBytes(buf.Bytes())
 
 	if err != nil {
 		return nil, fmt.Errorf("Could not get manifest: %s", err)
@@ -110,17 +112,19 @@ func getManifest(manifest_location string) (*Manifest, error) {
 }
 
 func JavaScriptHandler(manifest_location, source_location string) http.HandlerFunc {
+	masher := lib.NewMashContext(source_location)
+
 	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
 		m, err := getManifest(manifest_location)
 
 		if err != nil {
-			l.Printf("Mash Error: %s", err)
+			l.Printf("Get Manifest Error: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/javascript")
-		err = mashManifest(m, source_location, w)
+		err = masher.MashFilesToWriter(m, w)
 
 		if err != nil {
 			l.Printf("Mash Error: %s", err)
@@ -129,25 +133,48 @@ func JavaScriptHandler(manifest_location, source_location string) http.HandlerFu
 }
 
 func SASSHandler(manifest_location, source_location string) http.HandlerFunc {
+	masher := lib.NewMashContext(source_location)
+
 	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
 		m, err := getManifest(manifest_location)
 
 		if err != nil {
-			l.Printf("Mash Error: %s", err)
+			l.Printf("Get Manifest Error: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
+		// create Qmd for docker container
+		q := qmd.NewQmd("docker", "run", "-i", "-a", "stdin", "-a", "stdout", "codycraven/sassc", "-s")
+		stdin, err := q.Cmd.StdinPipe()
+
+		if err != nil {
+			l.Printf("Could not get Stdin of Qmd: %s", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		q.Cmd.Stdout = w
+
+		q.Start()
+
 		w.Header().Set("Content-Type", "text/css")
-		err = compileManifest(m, source_location, w)
+		err = masher.MashFilesToWriter(m, stdin)
+		stdin.Close()
 
 		if err != nil {
 			l.Printf("Mash Error: %s", err)
 		}
+
+		err = q.Wait()
+
+		if err != nil {
+			l.Printf("Exit Code: %s", err)
+		}
 	})
 }
 
-func HTMLHandler(template_location, prefix string) http.HandlerFunc {
+func HTMLHandler(source, template_location, prefix string) http.HandlerFunc {
 	env := make(map[string]string)
 
 	for _, setting := range os.Environ() {
@@ -158,23 +185,18 @@ func HTMLHandler(template_location, prefix string) http.HandlerFunc {
 		}
 	}
 
+	htmlBuildContext := lib.NewHTMLBuildContext(source)
+
 	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 
-		t := template.New("base")
-		t.Delims("<%", "%>")
-		t.Funcs(fm)
-
-		_, err := t.ParseFiles(template_location)
+		err := htmlBuildContext.CompileFile(template_location, env, w)
 
 		if err != nil {
 			l.Printf("Parse Error: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		_, filename := path.Split(template_location)
-		t.ExecuteTemplate(w, filename, env)
 	})
 }
 
@@ -203,6 +225,12 @@ func StaticHandler(root string) http.HandlerFunc {
 
 		case ".js":
 			w.Header().Set("Content-Type", "application/javascript")
+
+		case ".mp4":
+			w.Header().Set("Content-Type", "video/mp4")
+
+		case ".webm":
+			w.Header().Set("Content-Type", "video/webm")
 		}
 
 		io.Copy(w, file)
