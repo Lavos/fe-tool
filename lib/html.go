@@ -47,7 +47,6 @@ func (b *HTMLBuildContext) InjectFragments(pattern string) (template.HTML, error
 }
 
 func (b *HTMLBuildContext) CompileFile(template_path string, data interface{}, w io.Writer) error {
-	use_path := path.Join(b.sourceDirectory, template_path)
 	_, filename := path.Split(template_path)
 
 	t := template.New("base")
@@ -56,7 +55,7 @@ func (b *HTMLBuildContext) CompileFile(template_path string, data interface{}, w
 		"InjectFragments": b.InjectFragments,
 	})
 
-	_, err := t.ParseFiles(use_path)
+	_, err := t.ParseFiles(template_path)
 
 	if err != nil {
 		return err

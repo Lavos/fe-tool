@@ -1,11 +1,35 @@
 package lib
 
 import (
+	"os"
+	"io"
 	"gopkg.in/yaml.v2"
 )
 
 type Manifest struct {
 	Files []string `yaml:"files"`
+}
+
+func ManifestFromFile(location string) (*Manifest, error) {
+	file, err := os.Open(location)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+	return ManifestFromReader(file)
+}
+
+func ManifestFromReader(r io.Reader) (*Manifest, error) {
+	var m Manifest
+	err := yaml.NewDecoder(r).Decode(&m)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &m, nil
 }
 
 func ManifestFromBytes(b []byte) (*Manifest, error) {
@@ -43,3 +67,32 @@ type Route struct {
 
 	RequestPath string `yaml:"req_path"`
 }
+
+func WatcherManifestFromBytes(b []byte) (*WatcherManifest, error) {
+	var m WatcherManifest
+	err := yaml.Unmarshal(b, &m)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+type WatcherManifest struct {
+	Outputs []WatcherOutput `yaml:"outputs"`
+}
+
+type WatcherOutput struct {
+	FileName string `yaml:"filename"`
+	ManifestFile string `yaml:"manifest"`
+	ManifestType string `yaml:"type"`
+	Source string `yaml:"source"`
+
+	TemplateFile string `yaml:"template"`
+	Prefix string `yaml:"prefix"`
+	WatchGlobs []string `yaml:"globs"`
+
+	ParsedManifest *Manifest `yaml:"-"`
+}
+

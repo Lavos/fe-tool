@@ -8,45 +8,12 @@ import (
 	"strings"
 	"path/filepath"
 
+	"github.com/Lavos/fe-tool/lib"
+	qmd "github.com/Lavos/qmd/lib"
+
 	"github.com/spf13/cobra"
 	"github.com/fsnotify/fsnotify"
 )
-
-const (
-
-)
-
-var (
-
-)
-
-func WatcherManifestFromBytes(b []byte) (*WatcherManifest, error) {
-	var m WatcherManifest
-	err := yaml.Unmarshal(b, &m)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &m, nil
-}
-
-type WatcherManifest struct {
-	Outputs []WatcherOutput `yaml:"outputs"`
-}
-
-type WatcherOutput struct {
-	FileName string `yaml:"filename"`
-	ManifestFile string `yaml:"manifest"`
-	ManifestType string `yaml:"type"`
-	Source string `yaml:"source"`
-
-	TemplateFile string `yaml:"template"`
-	Prefix string `yaml:"prefix"`
-	WatchGlobs []string `yaml:"globs"`
-
-	ParsedManifest *Manifest `yaml:"-"`
-}
 
 var (
 	watcherCommand = &cobra.Command{
@@ -57,7 +24,7 @@ var (
 			buf := new(bytes.Buffer)
 			io.Copy(buf, os.Stdin)
 
-			wm, err := WatcherManifestFromBytes(buf.Bytes())
+			wm, err := lib.WatcherManifestFromBytes(buf.Bytes())
 
 			if err != nil {
 				return err
@@ -84,20 +51,20 @@ var (
 	}
 )
 
-func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
+func watch(watcher *fsnotify.Watcher, wm *lib.WatcherManifest) {
 	// build watch tree
 	var file *os.File
 	var buf *bytes.Buffer
 	var err error
 	var loc string
-	var o *WatcherOutput
+	var o *lib.WatcherOutput
 
 	var filenames []string
 
-	tree := make(map[string]*WatcherOutput)
+	tree := make(map[string]*lib.WatcherOutput)
 
 	for _, output := range wm.Outputs {
-		o = &WatcherOutput{
+		o = &lib.WatcherOutput{
 			FileName: output.FileName,
 			ManifestType: output.ManifestType,
 			ManifestFile: output.ManifestFile,
@@ -120,7 +87,7 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 
 			buf = new(bytes.Buffer)
 			io.Copy(buf, file)
-			m, err := ManifestFromBytes(buf.Bytes())
+			m, err := lib.ManifestFromBytes(buf.Bytes())
 
 			fmt.Fprintf(os.Stdout, "Manifest: %#v\n", m)
 
@@ -162,7 +129,10 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 		}
 
 		err = writeOutput(o)
-		fmt.Fprintf(os.Stderr, "Tree Output Error: %s\n", err)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Tree Output Error: %s\n", err)
+		}
 	}
 
 	fmt.Printf("Tree: %#v\n", tree)
@@ -198,21 +168,26 @@ func watch(watcher *fsnotify.Watcher, wm *WatcherManifest) {
 			}
 
 			err = writeOutput(o)
-			fmt.Fprintf(os.Stderr, "%s\n", err)
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+			}
 
 		case err, ok = <-watcher.Errors:
 			if !ok {
 				return
 			}
 
-			fmt.Fprintf(os.Stderr, "%s\n", err)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+			}
+
 			os.Exit(1)
 		}
 	}
 }
 
-func writeOutput(o *WatcherOutput) error {
-	fmt.Printf("test\n")
+func writeOutput(o *lib.WatcherOutput) error {
 	// open file for writing
 	file, err := os.Create(o.FileName)
 
@@ -221,21 +196,49 @@ func writeOutput(o *WatcherOutput) error {
 		os.Exit(1)
 	}
 
+	defer file.Close()
+
 	fmt.Printf("%#v\n", o)
 	fmt.Printf("%#v\n", o.ParsedManifest)
 
 	switch o.ManifestType {
 	case TypeJavascript:
-		err = mashManifest(o.ParsedManifest, o.Source, file)
+		masher := lib.NewMashContext(o.Source)
+		err = masher.MashFilesToWriter(o.ParsedManifest, file)
 
 	case TypeSASS:
-		err = compileManifest(o.ParsedManifest, o.Source, file)
+		// get mashed files
+		masher := lib.NewMashContext(o.Source)
+
+		// create Qmd for docker container
+		q := qmd.NewQmd("docker", "run", "-i", "-a", "stdin", "-a", "stdout", "codycraven/sassc", "-s")
+		stdin, err := q.Cmd.StdinPipe()
+
+		if err != nil {
+			break
+		}
+
+		q.Cmd.Stdout = file
+
+		err = q.Start()
+
+		if err != nil {
+			break
+		}
+
+		err = masher.MashFilesToWriter(o.ParsedManifest, stdin)
+		stdin.Close()
+
+		if err != nil {
+			break
+		}
+
+		err = q.Wait()
 
 	case TypeHTML:
-		err = CompileFile(o.TemplateFile, env, file)
+		htmlBC := lib.NewHTMLBuildContext(o.Source)
+		err = htmlBC.CompileFile(o.TemplateFile, env, file)
 	}
-
-	file.Close()
 
 	return err
 }

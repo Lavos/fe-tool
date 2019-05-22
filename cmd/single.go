@@ -190,7 +190,7 @@ func HTMLHandler(source, template_location, prefix string) http.HandlerFunc {
 	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 
-		err := htmlBuildContext.CompileFile(template_location, env, w)
+		err := htmlBuildContext.CompileFile(path.Join(source, template_location), env, w)
 
 		if err != nil {
 			l.Printf("Parse Error: %s", err)
