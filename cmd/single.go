@@ -145,7 +145,7 @@ func SASSHandler(manifest_location, source_location string) http.HandlerFunc {
 		}
 
 		// create Qmd for docker container
-		q := qmd.NewQmd("docker", "run", "-i", "-a", "stdin", "-a", "stdout", "codycraven/sassc", "-s")
+		q := qmd.NewQmd("docker", "run", "--rm", "-i", "-a", "stdin", "-a", "stdout", "codycraven/sassc", "-s")
 		stdin, err := q.Cmd.StdinPipe()
 
 		if err != nil {

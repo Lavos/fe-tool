@@ -211,7 +211,7 @@ func writeOutput(o *lib.WatcherOutput) error {
 		masher := lib.NewMashContext(o.Source)
 
 		// create Qmd for docker container
-		q := qmd.NewQmd("docker", "run", "-i", "-a", "stdin", "-a", "stdout", "codycraven/sassc", "-s")
+		q := qmd.NewQmd("docker", "run", "-i", "--rm", "-a", "stdin", "-a", "stdout", "-a", "stderr", "codycraven/sassc", "-s")
 		stdin, err := q.Cmd.StdinPipe()
 
 		if err != nil {
@@ -219,6 +219,7 @@ func writeOutput(o *lib.WatcherOutput) error {
 		}
 
 		q.Cmd.Stdout = file
+		q.Cmd.Stderr = os.Stderr
 
 		err = q.Start()
 
