@@ -14,3 +14,7 @@ routes:
  - type: "static"
    source: "examples/static"
    req_path: "/static/*"
+ - type: "modules"
+   source: "examples/js/modules"
+   req_path: "/modules/*"
+   truncate: "/modules/"

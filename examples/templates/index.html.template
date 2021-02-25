@@ -3,6 +3,10 @@
 <head>
 	<meta charset="utf-8"/>
 	<title></title>
+
+	<% range $midx, $module := ListModulesFromManifest "./examples/js/modules.manifest" %>
+		<script type="module" src="./modules/<% $module %>"></script>
+	<% end %>
 </head>
 
 <body>

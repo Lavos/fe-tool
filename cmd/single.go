@@ -23,6 +23,7 @@ const (
 	TypeSASS = "sass"
 	TypeHTML = "html"
 	TypeStatic = "static"
+	TypeModules = "modules"
 )
 
 var (
@@ -62,6 +63,9 @@ var (
 
 				case TypeStatic:
 					mux.Handle(pat.Get(route.RequestPath), StaticHandler(route.Source))
+
+				case TypeModules:
+					mux.Handle(pat.Get(route.RequestPath), ModuleHandler(route.Source, route.RequestPath))
 				}
 			}
 
@@ -232,6 +236,27 @@ func StaticHandler(root string) http.HandlerFunc {
 		case ".webm":
 			w.Header().Set("Content-Type", "video/webm")
 		}
+
+		io.Copy(w, file)
+		file.Close()
+	})
+}
+
+func ModuleHandler(root, reqPath string) http.HandlerFunc {
+	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With")
+
+		use_path := path.Join(root, strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(reqPath, "*")))
+		file, err := os.Open(use_path)
+
+		if err != nil {
+			l.Printf("Could not open file `%s`: %s", use_path, err)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/javascript")
 
 		io.Copy(w, file)
 		file.Close()

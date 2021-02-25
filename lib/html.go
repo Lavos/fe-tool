@@ -1,6 +1,7 @@
 package lib
 
 import (
+	// "fmt"
 	"io"
 	"os"
 	"bytes"
@@ -46,6 +47,18 @@ func (b *HTMLBuildContext) InjectFragments(pattern string) (template.HTML, error
 	return template.HTML(buf.String()), nil
 }
 
+func (b *HTMLBuildContext) ListModulesFromManifest(manifestLocation string) []string {
+	use_path := path.Join(b.sourceDirectory, manifestLocation)
+
+	manifest, err := ManifestFromFile(use_path)
+
+	if err != nil {
+		return []string{}
+	}
+
+	return manifest.Files
+}
+
 func (b *HTMLBuildContext) CompileFile(template_path string, data interface{}, w io.Writer) error {
 	_, filename := path.Split(template_path)
 
@@ -53,6 +66,7 @@ func (b *HTMLBuildContext) CompileFile(template_path string, data interface{}, w
 	t.Delims("<%", "%>")
 	t.Funcs(template.FuncMap{
 		"InjectFragments": b.InjectFragments,
+		"ListModulesFromManifest": b.ListModulesFromManifest,
 	})
 
 	_, err := t.ParseFiles(template_path)
